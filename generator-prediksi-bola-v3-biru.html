@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generator Tabel Prediksi Bola v3 — Auto Link + OCR + Logo Klub</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(5,10,20,0.75) 25%, rgba(0,71,171,0.55) 50%, rgba(5,10,20,0.75) 75%, rgba(0,0,0,0.95) 100%);
+    min-height: 100vh; padding: 30px 20px;
+  }
+  .input-area { background: rgba(0,0,0,0.8); border: 1px solid rgba(0,217,255,0.35); border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,217,255,0.15); }
+  .input-area label { display: block; color: #00D9FF; font-weight: bold; font-size: 0.95rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .panduan { background: rgba(0,217,255,0.07); border-left: 3px solid #00D9FF; padding: 10px 14px; font-size: 0.78rem; color: #ccc; line-height: 1.9; margin-bottom: 12px; border-radius: 4px; }
+  .panduan b { color: #00D9FF; }
+  textarea { width: 100%; height: 280px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid rgba(0,217,255,0.3); border-radius: 8px; padding: 12px; font-family: 'Courier New', monospace; font-size: 0.82rem; line-height: 1.8; resize: vertical; }
+  textarea:focus { outline: none; border-color: #00D9FF; }
+  input[type="url"], input[type="text"] { width: 100%; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid rgba(0,217,255,0.3); border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; font-family: 'Rajdhani', sans-serif; }
+  input[type="url"]:focus, input[type="text"]:focus { outline: none; border-color: #00D9FF; }
+  input[type="file"] { color: #ccc; font-size: 0.82rem; }
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s; font-family: 'Rajdhani', sans-serif; }
+  .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-ok { background: linear-gradient(90deg, #00D9FF, #0047AB); color: #000; }
+  .btn-reset { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
+  .btn-salin { background: rgba(0,217,255,0.2); color: #00D9FF; border: 1px solid rgba(0,217,255,0.4); }
+  .btn-link { background: linear-gradient(90deg, #ffffff, #cfd8dc); color: #000; }
+  .btn-ocr { background: linear-gradient(90deg, #0047AB, #001233); color: #fff; }
+  .ok-msg { color: #00D9FF; font-size: 0.82rem; font-weight: bold; }
+  #hasil { margin-top: 4px; }
+  .status-line { margin-top: 10px; font-size: 0.82rem; font-weight: bold; min-height: 18px; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.85rem; color: #ccc; }
+  .toggle-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #00BFFF; cursor: pointer; }
+  .toggle-row label { color: #00BFFF; font-weight: bold; text-transform: none; letter-spacing: 0; cursor: pointer; }
+
+  /* ===== TABEL PREDIKSI (LIVE PREVIEW) ===== */
+  .custom-table-watitoto3 { padding: 10px 0; font-family: 'Rajdhani', 'Segoe UI', sans-serif; }
+  .custom-table-watitoto3 table {
+    width: 90%; margin: 0 auto 35px; border-collapse: collapse; border-radius: 16px; overflow: hidden; table-layout: fixed;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); border: 2px solid rgba(0,217,255,0.9); animation: blueGlow 3s infinite;
+    box-shadow: 0 10px 40px rgba(0,217,255,0.25); transition: 0.3s ease; position: relative;
+  }
+  .custom-table-watitoto3 table::before{ content:''; position:absolute; top:0; left:-150%; width:50%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent); animation:shine 4s infinite; }
+  .custom-table-watitoto3 table:hover { box-shadow: 0 15px 50px rgba(0,217,255,0.45); transform: translateY(-4px); }
+  .custom-table-watitoto3 th[colspan="3"] { font-family: 'Orbitron', 'Segoe UI', sans-serif; font-weight: 900; background: linear-gradient(90deg, #0047AB, #00D9FF); color: #fff; text-shadow: 0 0 10px rgba(0,217,255,0.9), 0 0 2px rgba(0,0,0,0.6); font-size: 17px; padding: 14px; letter-spacing: 4px; border-bottom: 2px solid rgba(255,255,255,0.9); }
+  .custom-table-watitoto3 th { font-family: 'Rajdhani', sans-serif; font-weight: 900; padding: 10px; background: rgba(10,15,25,0.95); color: #00D9FF; text-shadow: 0 0 6px rgba(0,217,255,0.5); font-size: 15px; text-align: center; border: 1px dashed rgba(0,217,255,0.5); letter-spacing: 1px; }
+  .custom-table-watitoto3 td { font-family: 'Rajdhani', sans-serif; font-weight: 900; padding: 10px; text-align: center; font-size: 15px; color: #fff; text-shadow: 0 0 4px rgba(0,217,255,0.35); border: 1px dashed rgba(0,217,255,0.25); }
+  .custom-table-watitoto3 tr:nth-child(even) { background: rgba(255,255,255,0.05); }
+  .custom-table-watitoto3 tr:hover { background: rgba(0,217,255,0.2); transform:scale(1.01); transition:all .3s ease; }
+  @media (max-width: 600px) { .custom-table-watitoto3 table { width: 95%; } .custom-table-watitoto3 th, .custom-table-watitoto3 td { padding: 6px; font-size: 11px; } }
+
+  /* ===== LOGO KLUB (LIVE PREVIEW) ===== */
+  .custom-table-watitoto3 .match-with-logos { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+  .custom-table-watitoto3 .club-with-logo { display: inline-flex; align-items: center; gap: 5px; }
+  .custom-table-watitoto3 .club-logo-direct { width: 20px; height: 20px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+  .custom-table-watitoto3 .vs-text { color: #00D9FF; font-size: 11px; font-weight: 700; opacity: 0.85; }
+  @media (max-width: 600px) { .custom-table-watitoto3 .club-logo-direct { width: 15px; height: 15px; } .custom-table-watitoto3 .vs-text { font-size: 9px; } }
+
+  .kosong { text-align: center; color: rgba(0,217,255,0.4); padding: 40px; font-size: 0.9rem; font-style: italic; }
+  @keyframes blueGlow { 0% { box-shadow: 0 0 15px rgba(0,217,255,.3); } 50% { box-shadow: 0 0 35px rgba(0,217,255,.8); } 100% { box-shadow: 0 0 15px rgba(0,217,255,.3); } }
+  @keyframes shine { 100% { left: 200%; } }
+</style>
+</head>
+<body>
+
+<!-- FITUR 1: AMBIL OTOMATIS DARI LINK -->
+<div class="input-area">
+  <label>🔗 Ambil Otomatis dari Link Prediksi</label>
+  <div class="panduan">
+    Paste link halaman prediksi, lalu klik <b>Ambil dari Link</b>.
+    Sistem akan coba fetch halamannya dan otomatis susun ke format textarea di bawah.<br>
+    ⚠️ Kalau situs sumber blokir cross-origin (CORS), proses otomatis bisa gagal — kalau gagal, tinggal buka linknya manual, select-all isi bagian jadwal, copy, paste ke textarea di bawah.
+  </div>
+  <input type="url" id="urlInput" placeholder="https://contoh.com/prediksi-bola-hari-ini">
+  <div class="btn-row">
+    <button class="btn btn-link" id="btnLink" onclick="ambilDariLink()">🔗 Ambil dari Link</button>
+    <span class="status-line" id="statusLink"></span>
+  </div>
+</div>
+
+<!-- FITUR 2: SCAN DARI SCREENSHOT (OCR) -->
+<div class="input-area">
+  <label>📷 Scan dari Screenshot (OCR)</label>
+  <div class="panduan">
+    Upload screenshot tabel prediksi. Bisa pilih <b>lebih dari 1 gambar sekaligus</b> (misal per-liga biar hasil OCR lebih akurat) —
+    nanti diproses satu-satu otomatis lalu digabung ke textarea. <b>Selalu cek ulang hasilnya</b> sebelum klik Generate.
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+  <div class="btn-row">
+    <button class="btn btn-ocr" id="btnOcr" onclick="scanGambar()">📷 Scan Gambar</button>
+    <span class="status-line" id="statusOcr"></span>
+  </div>
+</div>
+
+<!-- INPUT MANUAL -->
+<div class="input-area">
+  <label>⚽ Data Prediksi (Manual / Hasil Otomatis) — Liga Apa Saja Bisa</label>
+  <div class="panduan">
+    <b>Format 1 (pakai pemisah |):</b><br>
+    [NAMA LIGA]<br>
+    23/02 04:00 WIB | Tim A vs Tim B | 1:1 | https://link (opsional)<br><br>
+    <b>Format 2 (langsung paste tanpa pemisah):</b><br>
+    COLOMBIA PRIMERA B<br>
+    23/02 03:00 WIB Real Cundinamarca vs Orsomarso SC 1 : 1<br><br>
+    ✅ Tanpa "WIB" juga tetap bisa. Skor boleh titik dua atau strip/dash, otomatis dirapikan jadi <b>2 : 1</b>.<br><br>
+    ✅ HTML yang di-copy sudah include style <b>custom-table-watitoto3</b> — langsung tempel ke website.<br>
+    ⚽ <b>Logo klub</b> otomatis dicari dari nama tim (lihat toggle di bawah) — tidak perlu input manual.
+  </div>
+  <textarea id="dataInput" placeholder="Paste data prediksi di sini, atau pakai fitur Ambil dari Link / Scan Gambar di atas..."></textarea>
+  <div class="toggle-row">
+    <input type="checkbox" id="toggleLogo" checked>
+    <label for="toggleLogo">⚽ Tampilkan Logo Klub (otomatis, dicari berdasarkan nama tim)</label>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ok" onclick="buatTabel()">🔄 Generate Tabel</button>
+    <button class="btn btn-reset" onclick="resetSemua()">🗑️ Reset</button>
+    <button class="btn btn-salin" onclick="salinHTML()">📋 Copy HTML</button>
+    <span class="ok-msg" id="pesanOk" style="display:none;">✅ HTML tersalin! Siap ditempel ke website.</span>
+  </div>
+</div>
+
+<div id="hasil">
+  <div class="kosong">Paste data / ambil dari link / scan gambar, lalu klik tombol Generate Tabel</div>
+</div>
+
+<script>
+/* ================== CSS UNTUK OUTPUT WORDPRESS (WAJIB SINKRON DENGAN <style> DI ATAS) ================== */
+/* PENTING: kalau ubah warna/style tabel atau logo, ubah DI DUA TEMPAT — <style> di <head> DAN string CSS_OUTPUT ini. */
+const CSS_OUTPUT = `<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+.custom-table-watitoto3 { padding: 50px 0; font-family: 'Rajdhani', 'Segoe UI', sans-serif; background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(5,10,20,0.75) 25%, rgba(0,71,171,0.55) 50%, rgba(5,10,20,0.75) 75%, rgba(0,0,0,0.95) 100%); }
+.custom-table-watitoto3 table { width: 90%; margin: 0 auto 35px; border-collapse: collapse; border-radius: 16px; overflow: hidden; table-layout: fixed; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); border: 2px solid rgba(0,217,255,0.9); animation: blueGlow 3s infinite; box-shadow: 0 10px 40px rgba(0,217,255,0.25); transition: 0.3s ease; position: relative; }
+.custom-table-watitoto3 table:hover { box-shadow: 0 15px 50px rgba(0,217,255,0.45); transform: translateY(-4px); }
+.custom-table-watitoto3 th[colspan="3"] { font-family: 'Orbitron', 'Segoe UI', sans-serif; font-weight: 900; background: linear-gradient(90deg, #0047AB, #00D9FF); color: #fff; text-shadow: 0 0 10px rgba(0,217,255,0.9), 0 0 2px rgba(0,0,0,0.6); font-size: 17px; padding: 14px; letter-spacing: 2px; border-bottom: 2px solid rgba(255,255,255,0.9); }
+.custom-table-watitoto3 th { font-family: 'Rajdhani', sans-serif; font-weight: 900; padding: 10px; background: rgba(10,15,25,0.95); color: #00D9FF; text-shadow: 0 0 6px rgba(0,217,255,0.5); font-size: 15px; text-align: center; border: 1px dashed rgba(0,217,255,0.5); letter-spacing: 1px; }
+.custom-table-watitoto3 td { font-family: 'Rajdhani', sans-serif; font-weight: 900; padding: 10px; text-align: center; font-size: 15px; color: #fff; text-shadow: 0 0 4px rgba(0,217,255,0.35); border: 1px dashed rgba(0,217,255,0.25); }
+.custom-table-watitoto3 tr:nth-child(even) { background: rgba(255,255,255,0.05); }
+.custom-table-watitoto3 tr:hover { background: rgba(0,217,255,0.15); transition: 0.2s ease; }
+.custom-table-watitoto3 .match-with-logos { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.custom-table-watitoto3 .club-with-logo { display: inline-flex; align-items: center; gap: 5px; }
+.custom-table-watitoto3 .club-logo-direct { width: 20px; height: 20px; object-fit: contain; border-radius: 50%; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+.custom-table-watitoto3 .vs-text { color: #00D9FF; font-size: 11px; font-weight: 700; opacity: 0.85; }
+@media (max-width: 600px) { .custom-table-watitoto3 table { width: 95%; } .custom-table-watitoto3 th, .custom-table-watitoto3 td { padding: 6px; font-size: 11px; } .custom-table-watitoto3 .club-logo-direct { width: 15px; height: 15px; } .custom-table-watitoto3 .vs-text { font-size: 9px; } }
+</style>`;
+
+/* ================== LOGO KLUB: CASCADING getLogoUrl() ================== */
+/* Tahap 1: cek di daftar logo resmi CDN (stabil, tidak berubah-ubah).
+   Tahap 2: kalau tidak ada di daftar, fallback ke pencarian gambar Bing (bisa berubah-ubah, tapi cakupannya luas). */
+const KNOWN_LOGOS = {
+  "liverpool": "https://resources.premierleague.com/premierleague/badges/50/t14.png",
+  "manchester united": "https://resources.premierleague.com/premierleague/badges/50/t1.png",
+  "manchester city": "https://resources.premierleague.com/premierleague/badges/50/t43.png",
+  "arsenal": "https://resources.premierleague.com/premierleague/badges/50/t3.png",
+  "chelsea": "https://resources.premierleague.com/premierleague/badges/50/t8.png",
+  "tottenham": "https://resources.premierleague.com/premierleague/badges/50/t6.png",
+  "real madrid": "https://logos-world.net/wp-content/uploads/2020/06/Real-Madrid-Logo.png",
+  "barcelona": "https://logos-world.net/wp-content/uploads/2020/06/Barcelona-Logo.png",
+  "bayern munich": "https://logos-world.net/wp-content/uploads/2020/06/Bayern-Munich-Logo.png",
+  "psg": "https://logos-world.net/wp-content/uploads/2020/06/Paris-Saint-Germain-Logo.png",
+  "paris saint-germain": "https://logos-world.net/wp-content/uploads/2020/06/Paris-Saint-Germain-Logo.png",
+  "juventus": "https://logos-world.net/wp-content/uploads/2020/06/Juventus-Logo.png"
+};
+
+function getLogoUrl(namaTim) {
+  const key = namaTim.trim().toLowerCase();
+  if (KNOWN_LOGOS[key]) return KNOWN_LOGOS[key];
+  const query = encodeURIComponent(`"${namaTim.trim()}" football club official logo`);
+  return `https://tse1.mm.bing.net/th?q=${query}&w=64&h=64&c=7&rs=1&p=0&pid=InlineBlock`;
+}
+
+function buatSpanLogo(namaTim) {
+  const nm = namaTim.trim();
+  const url = getLogoUrl(nm);
+  const nmAman = nm.replace(/"/g, '&quot;');
+  return `<span class="club-with-logo"><img class="club-logo-direct" src="${url}" alt="Logo ${nmAman}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'"><span>${nm}</span></span>`;
+}
+
+function bungkusMatchDenganLogo(namaMatch) {
+  const parts = namaMatch.split(/\s+vs\s+/i);
+  if (parts.length !== 2) return namaMatch; // format tidak dikenali, tampilkan apa adanya
+  const timA = parts[0].trim();
+  const timB = parts[1].trim();
+  return `<span class="match-with-logos">${buatSpanLogo(timA)}<span class="vs-text">vs</span>${buatSpanLogo(timB)}</span>`;
+}
+
+/* ================== PARSING DATA (SAMA SEPERTI VERSI SEBELUMNYA) ================== */
+
+function adalahHeaderLiga(b) {
+  if (/^\[.+\]$/.test(b)) return true;
+  const adaTanggal = /\d{2}\/\d{2}/.test(b);
+  const adaVs = /\bvs\b/i.test(b);
+  const adaSkor = /\d\s*[:\-–—]\s*\d/.test(b);
+  const adaPipe = b.includes('|');
+  if (!adaTanggal && !adaVs && !adaSkor && !adaPipe && b.length > 3 && b.length < 70) return true;
+  return false;
+}
+
+const ZONA_WAKTU = /^(WIB|WITA|WIT)$/i;
+const SKOR_REGEX = /(\d+)\s*[:\-–—]\s*(\d+)\s*$/;
+
+function parseBaris(b) {
+  if (b.includes('|')) {
+    const kol = b.split('|').map(k => k.trim());
+    let skor = kol[2] || '';
+    const skorCocok = skor.match(/^(\d+)\s*[:\-–—]\s*(\d+)$/);
+    if (skorCocok) skor = `${skorCocok[1]} : ${skorCocok[2]}`;
+    return { tanggal: kol[0]||'', match: kol[1]||'', skor, url: kol[3]||'' };
+  }
+  const skorMatch = b.match(SKOR_REGEX);
+  if (!skorMatch) return null;
+  const skor = `${skorMatch[1]} : ${skorMatch[2]}`;
+  const sisa = b.slice(0, b.length - skorMatch[0].length).trim();
+
+  const dtMatch = sisa.match(/^(\d{2}\/\d{2}\s+\d{2}:\d{2}|\d{2}:\d{2})\s*/);
+  if (!dtMatch) return { tanggal: '', match: sisa, skor, url: '' };
+
+  let tanggal = dtMatch[1];
+  let rest = sisa.slice(dtMatch[0].length).trim();
+
+  const kataPertama = rest.split(/\s+/)[0] || '';
+  if (ZONA_WAKTU.test(kataPertama)) {
+    tanggal += ' ' + kataPertama;
+    rest = rest.slice(kataPertama.length).trim();
+  }
+
+  return { tanggal, match: rest, skor, url: '' };
+}
+
+function buildTabelLiga(namaLiga, dataLiga, pakaiLogo) {
+  const nm = namaLiga.replace(/^\[|\]$/g, '');
+  let rows = '';
+  dataLiga.forEach(b => {
+    const p = parseBaris(b);
+    if (!p) return;
+    const isiMatchDasar = pakaiLogo ? bungkusMatchDenganLogo(p.match) : p.match;
+    const isiMatch = p.url ? `<a href="${p.url}" target="_blank" style="color:inherit;text-decoration:none;">${isiMatchDasar}</a>` : isiMatchDasar;
+    const isiSkor = p.url ? `<a href="${p.url}" target="_blank" style="color:inherit;text-decoration:none;">${p.skor}</a>` : p.skor;
+    rows += `<tr>\n<td>${p.tanggal}</td>\n<td>${isiMatch}</td>\n<td>${isiSkor}</td>\n</tr>\n`;
+  });
+  if (!rows) return '';
+  return `<!-- ${nm} -->\n<table>\n<tbody>\n<tr>\n<th colspan="3">${nm}</th>\n</tr>\n<tr>\n<th>Tanggal &amp; Waktu</th>\n<th>Pertandingan</th>\n<th>Skor</th>\n</tr>\n${rows}</tbody>\n</table>\n`;
+}
+
+function prosesData(forCopy) {
+  const teks = document.getElementById('dataInput').value.trim();
+  if (!teks) return null;
+  const pakaiLogo = document.getElementById('toggleLogo').checked;
+  const semuaBaris = teks.split('\n');
+  let htmlTabel = '';
+  let namaLiga = null;
+  let dataLiga = [];
+  let adaHasil = false;
+
+  function flush() {
+    if (!namaLiga || dataLiga.length === 0) return;
+    const blok = buildTabelLiga(namaLiga, dataLiga, pakaiLogo);
+    if (blok) { htmlTabel += blok; adaHasil = true; }
+    dataLiga = [];
+  }
+
+  semuaBaris.forEach(b => {
+    b = b.trim();
+    if (!b) return;
+    if (adalahHeaderLiga(b)) { flush(); namaLiga = b; }
+    else if (namaLiga) dataLiga.push(b);
+  });
+  flush();
+
+  if (!adaHasil) return null;
+  return forCopy
+    ? `<div class="custom-table-watitoto3">\n${CSS_OUTPUT}\n${htmlTabel}</div>`
+    : `<div class="custom-table-watitoto3">${htmlTabel}</div>`;
+}
+
+function buatTabel() {
+  const html = prosesData(false);
+  document.getElementById('hasil').innerHTML = html || "<div class='kosong'>Format tidak dikenali. Pastikan ada nama liga dan data pertandingan.</div>";
+}
+function resetSemua() {
+  document.getElementById('dataInput').value = '';
+  document.getElementById('hasil').innerHTML = "<div class='kosong'>Paste data lalu klik tombol Generate Tabel</div>";
+}
+function salinHTML() {
+  const html = prosesData(true);
+  if (!html) { alert('Generate tabel dulu sebelum copy HTML!'); return; }
+  navigator.clipboard.writeText(html).then(() => {
+    const p = document.getElementById('pesanOk');
+    p.style.display = 'inline';
+    setTimeout(() => p.style.display = 'none', 3000);
+  });
+}
+
+/* ================== EKSTRAKSI TEKS -> FORMAT 2 (DARI LINK / OCR) ================== */
+
+function isLikelyHeader(line) {
+  if (/\d{1,2}:\d{2}/.test(line)) return false;
+  if (/\bVS\b/i.test(line)) return false;
+  if (/\d+\s*[:\-–—]\s*\d+/.test(line)) return false;
+  if (line.length < 3 || line.length > 70) return false;
+  const huruf = line.replace(/[^A-Za-z]/g, '');
+  if (huruf.length < 3) return false;
+  const upperRatio = (line.match(/[A-Z]/g) || []).length / huruf.length;
+  return upperRatio > 0.6;
+}
+
+const PEMISAH_TIM = '(?:VS|\\s[vw]\\s)';
+
+function ekstrakMatchDariBlob(blob) {
+  const hasil = [];
+  const re = new RegExp(
+    '(\\d{1,2}:\\d{2})\\s*(?:WIB)?\\s*(?:[•\\-]?\\s*(\\d{1,2}\\/\\d{1,2}))?\\s*' +
+    '(.+?)' + PEMISAH_TIM + '(.+?)\\s*(\\d+)\\s*[:\\-–—]\\s*(\\d+)(?=\\s|$)',
+    'gi'
+  );
+  let m;
+  while ((m = re.exec(blob)) !== null) {
+    const [, waktu, tanggal, timA, timB, sA, sB] = m;
+    const tanggalWaktu = (tanggal ? tanggal + ' ' : '') + waktu + ' WIB';
+    hasil.push(`${tanggalWaktu} ${timA.trim()} vs ${timB.trim()} ${sA} : ${sB}`);
+  }
+  return hasil;
+}
+
+function rapikanJamTanpaTitikDua(line) {
+  return line.replace(/^([01]\d|2[0-3])(\d{2})(?=\s)/, '$1:$2');
+}
+
+function bersihkanMarkdown(t) {
+  return t
+    .replace(/\*\*/g, '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*/g, '');
+}
+
+function ekstrakDariTeksWeb(teksMentah) {
+  if (!teksMentah) return '';
+  const bersih = bersihkanMarkdown(teksMentah);
+  const baris = bersih.replace(/\r/g, '\n').split('\n').map(x => rapikanJamTanpaTitikDua(x.trim())).filter(Boolean);
+
+  let blob = '';
+  baris.forEach(line => {
+    if (isLikelyHeader(line)) {
+      blob += '\n@@' + line + '@@\n';
+    } else {
+      blob += ' ' + line + ' ';
+    }
+  });
+
+  const segmen = blob.split(/\n@@/).filter(Boolean);
+  let output = '';
+  segmen.forEach(seg => {
+    const idx = seg.indexOf('@@');
+    if (idx === -1) return;
+    const namaHeader = seg.slice(0, idx).trim();
+    const isiBlob = seg.slice(idx + 2);
+    const daftarMatch = ekstrakMatchDariBlob(isiBlob);
+    if (daftarMatch.length) {
+      output += namaHeader + '\n' + daftarMatch.join('\n') + '\n\n';
+    }
+  });
+  return output.trim();
+}
+
+/* ================== FITUR 1: AMBIL DARI LINK ================== */
+
+async function ambilDariLink() {
+  const url = document.getElementById('urlInput').value.trim();
+  const statusEl = document.getElementById('statusLink');
+  const btn = document.getElementById('btnLink');
+  if (!url) { alert('Masukkan link prediksi dulu, Ketua.'); return; }
+
+  btn.disabled = true;
+  statusEl.style.color = '#00D9FF';
+  statusEl.textContent = '⏳ Mengambil halaman...';
+
+  let teksMentah = null;
+  let modeHtml = false;
+  let errorTerakhir = '';
+
+  try {
+    const r = await fetch('https://r.jina.ai/' + url);
+    if (!r.ok) throw new Error('status ' + r.status);
+    teksMentah = await r.text();
+  } catch (e1) {
+    errorTerakhir = e1.message || String(e1);
+    statusEl.textContent = '⏳ Proxy pembaca gagal (' + errorTerakhir + '), coba fetch langsung...';
+
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('status ' + res.status);
+      teksMentah = await res.text();
+      modeHtml = true;
+    } catch (e2) {
+      errorTerakhir = e2.message || String(e2);
+      statusEl.textContent = '⏳ Fetch langsung gagal (' + errorTerakhir + '), coba proxy cadangan...';
+
+      try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        const res3 = await fetch(proxyUrl);
+        if (!res3.ok) throw new Error('status ' + res3.status);
+        teksMentah = await res3.text();
+        modeHtml = true;
+      } catch (e3) {
+        errorTerakhir = e3.message || String(e3);
+        statusEl.style.color = '#ff5555';
+        statusEl.textContent = '❌ Semua cara otomatis gagal (' + errorTerakhir + '). Buka link manual, copy bagian jadwal, paste ke textarea di bawah.';
+        btn.disabled = false;
+        return;
+      }
+    }
+  }
+
+  try {
+    let teks = teksMentah;
+    if (modeHtml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(teksMentah, 'text/html');
+      teks = doc.body ? (doc.body.innerText || doc.body.textContent || '') : '';
+    }
+    const hasilFormat = ekstrakDariTeksWeb(teks);
+    if (!hasilFormat) {
+      statusEl.style.color = '#ffaa00';
+      statusEl.textContent = '⚠️ Halaman berhasil diambil tapi pola datanya tidak dikenali. Coba manual copy-paste.';
+      btn.disabled = false;
+      return;
+    }
+    document.getElementById('dataInput').value = hasilFormat;
+    statusEl.style.color = '#4ade80';
+    statusEl.textContent = '✅ Data berhasil diambil & disusun! Cek dulu di textarea, lalu klik Generate Tabel.';
+    buatTabel();
+  } catch (e4) {
+    statusEl.style.color = '#ff5555';
+    statusEl.textContent = '❌ Gagal parsing halaman: ' + (e4.message || e4);
+  }
+  btn.disabled = false;
+}
+
+/* ================== FITUR 2: SCAN GAMBAR (OCR) ================== */
+
+async function scanGambar() {
+  const fileInput = document.getElementById('fileInput');
+  const statusEl = document.getElementById('statusOcr');
+  const btn = document.getElementById('btnOcr');
+  if (!fileInput.files.length) { alert('Pilih file gambar dulu, Ketua.'); return; }
+
+  const daftarFile = Array.from(fileInput.files);
+  btn.disabled = true;
+  statusEl.style.color = '#00D9FF';
+  statusEl.textContent = `⏳ Menyiapkan OCR untuk ${daftarFile.length} gambar...`;
+
+  try {
+    if (typeof Tesseract === 'undefined') {
+      throw new Error('Library Tesseract belum termuat (cek koneksi internet / CDN diblokir jaringan lo).');
+    }
+
+    let idxSaatIni = 0;
+    const worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          statusEl.textContent = `⏳ Gambar ${idxSaatIni}/${daftarFile.length} — membaca... ${Math.round(m.progress * 100)}%`;
+        } else if (m.status) {
+          statusEl.textContent = `⏳ Gambar ${idxSaatIni}/${daftarFile.length} — ${m.status}...`;
+        }
+      }
+    });
+
+    await worker.setParameters({ tessedit_pageseg_mode: '6' });
+
+    const hasilPerGambar = [];
+    const teksMentahGabungan = [];
+
+    for (const file of daftarFile) {
+      idxSaatIni++;
+      statusEl.textContent = `⏳ Memproses gambar ${idxSaatIni}/${daftarFile.length}...`;
+      const { data: { text } } = await worker.recognize(file);
+      teksMentahGabungan.push(text);
+      const hasilFormat = ekstrakDariTeksWeb(text);
+      if (hasilFormat) hasilPerGambar.push(hasilFormat);
+    }
+
+    await worker.terminate();
+
+    const gabungan = hasilPerGambar.join('\n\n');
+    const dataLama = document.getElementById('dataInput').value.trim();
+
+    if (gabungan) {
+      document.getElementById('dataInput').value = dataLama ? (dataLama + '\n\n' + gabungan) : gabungan;
+      statusEl.style.color = '#4ade80';
+      statusEl.textContent = `✅ ${hasilPerGambar.length}/${daftarFile.length} gambar berhasil dibaca & disusun. WAJIB dicek dulu, lalu klik Generate Tabel.`;
+    } else {
+      document.getElementById('dataInput').value = dataLama ? (dataLama + '\n\n' + teksMentahGabungan.join('\n\n')) : teksMentahGabungan.join('\n\n');
+      statusEl.style.color = '#ffaa00';
+      statusEl.textContent = '⚠️ Teks terbaca tapi pola tidak dikenali otomatis di semua gambar. Hasil OCR mentah dimasukkan, rapikan manual dulu.';
+    }
+  } catch (e) {
+    statusEl.style.color = '#ff5555';
+    statusEl.textContent = '❌ Gagal membaca gambar: ' + (e && e.message ? e.message : e);
+    console.error(e);
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
